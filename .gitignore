@@ -1,0 +1,50 @@
+# Ambientes virtuais
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-code e cache do Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# Dados pesados e raw/processed (mantendo os diretórios via .gitkeep)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Modelos, artefatos pesados e outputs serializados
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.parquet
+*.feather
+artifacts/*
+!artifacts/.gitkeep
+
+# Arquivos de sistema operacional e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Logs e variáveis de ambiente
+*.log
+.env
+.env.*
+!.env.example
+

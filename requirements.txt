@@ -1,0 +1,40 @@
+# =========================================================
+# INTEGRAÇÃO E DADOS KAGGLE
+# =========================================================
+kagglehub>=0.2.0        
+pyarrow>=14.0.0         
+
+# =========================================================
+# MANIPULAÇÃO E ANÁLISE DE DADOS
+# =========================================================
+pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0           # Distâncias, dendrogramas e clusterização hierárquica
+
+# =========================================================
+# VISUALIZAÇÃO DE DADOS
+# =========================================================
+matplotlib>=3.7.0       # Método do cotovelo, dispersão de clusters
+seaborn>=0.12.0
+plotly>=5.15.0          # Gráficos interativos 3D e suporte ao Optuna
+
+# =========================================================
+# MACHINE LEARNING E PIPELINE
+# =========================================================
+scikit-learn>=1.3.0     # KMeans, DBSCAN, GMM, PCA, métricas de validação (Silhouette)
+joblib>=1.3.0           # Serialização do modelo/pipeline treinado
+
+# =========================================================
+# OTIMIZAÇÃO DE HIPERPARÂMETROS
+# =========================================================
+optuna>=3.0.0           # Tuning de hiperparâmetros (ex: achar o melhor K)
+
+# =========================================================
+# AMBIENTE DE DESENVOLVIMENTO E UTILITÁRIOS
+# =========================================================
+pyyaml>=6.0.0           
+python-dotenv>=1.0.0    
+ipykernel>=6.20.0       
+nbformat>=5.9.0         
+tqdm>=4.65.0            # Barra de progresso para loops (ex: testar vários K)
+tabulate>=0.9.0         
