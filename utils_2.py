@@ -7,6 +7,8 @@ from matplotlib import ticker
 import seaborn as sns
 import scipy.stats as stats
 from sklearn.preprocessing import RobustScaler
+import plotly.express as px
+import plotly.graph_objects as go
 
 
 def histograma_simples(
@@ -954,3 +956,336 @@ def pipeline_clusterizacao(df: pd.DataFrame) -> pd.DataFrame:
     df_cluster_scaled = pd.DataFrame(array_scaled, columns=df_copia.columns, index=df_copia.index)
 
     return df_cluster_scaled
+
+
+def plot_elbow_comparativo(
+    k_valores,
+    inercias_orig,
+    inercias_trat,
+    titulos=('Metodo Elbow: Dados Originais (X)', 'Metodo Elbow: Dados Tratados (X_tratado)'),
+    cores=('#7F8C8D', '#C00000'),
+    figsize=(15, 6)
+):
+    """
+    Plota 1x2 subplots comparando a curva WCSS (inercia) antes e depois
+    do escalonamento, com spines limpos e grid suave no eixo Y.
+
+    Parametros
+    ----------
+    k_valores : iterable
+        Valores de K testados (ex: range(1, 21)).
+    inercias_orig : list
+        Inercias do dataset original (X).
+    inercias_trat : list
+        Inercias do dataset tratado (X_tratado).
+    titulos : tuple of str
+        Titulos dos subplots esquerdo e direito.
+    cores : tuple of str
+        Cores das linhas (original, tratado).
+    figsize : tuple
+        Dimensoes da figura (largura, altura).
+    """
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+
+    dados = [
+        (inercias_orig, cores[0], titulos[0]),
+        (inercias_trat, cores[1], titulos[1]),
+    ]
+
+    for ax, (inercias, cor, titulo) in zip(axes, dados):
+        ax.plot(k_valores, inercias, marker='o', markersize=6,
+                color=cor, linewidth=2)
+        ax.set_title(titulo, fontsize=13, fontweight='bold',
+                     color='#333333', pad=12)
+        ax.set_xlabel('Numero de Clusters (K)', fontsize=11,
+                      fontweight='bold', color='#4A4A4A')
+        if ax == axes[0]:
+            ax.set_ylabel('Inercia (WCSS)', fontsize=11,
+                          fontweight='bold', color='#4A4A4A')
+        ax.set_xticks(k_valores)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#BDC3C7')
+        ax.spines['bottom'].set_color('#BDC3C7')
+        ax.grid(axis='y', linestyle='--', alpha=0.4, color='#D5D8DC')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_metricas_validacao(
+    df_resultados,
+    coluna_k='K',
+    metricas=('Silhouette', 'Davies_Bouldin', 'Calinski_Harabasz'),
+    titulos=None,
+    cores=('#2E86C1', '#C00000', '#28B463'),
+    suptitle='Metricas de Validacao para cada K (Subsample de 10k pontos)',
+    figsize=(16, 5)
+):
+    """
+    Plota 1x3 subplots com as curvas de evolucao das metricas de
+    clusterizacao por K (Silhouette, Davies-Bouldin, Calinski-Harabasz).
+
+    Parametros
+    ----------
+    df_resultados : pd.DataFrame
+        DataFrame com as metricas, contendo uma coluna para K e uma para cada metrica.
+    coluna_k : str
+        Nome da coluna com os valores de K.
+    metricas : tuple of str
+        Nomes das colunas de metricas a plotar.
+    titulos : tuple of str or None
+        Titulos de cada subplot. Se None, usa os nomes das metricas.
+    cores : tuple of str
+        Cores das linhas para cada metrica.
+    suptitle : str
+        Titulo principal da figura.
+    figsize : tuple
+        Dimensoes da figura (largura, altura).
+    """
+    if titulos is None:
+        titulos = metricas
+
+    fig, axes = plt.subplots(1, 3, figsize=figsize)
+    fig.suptitle(suptitle, fontsize=18, fontweight='bold',
+                 color='#1C1C1C', y=1.05)
+
+    for i, (metrica, titulo, cor) in enumerate(zip(metricas, titulos, cores)):
+        ax = axes[i]
+        ax.plot(
+            df_resultados[coluna_k], df_resultados[metrica],
+            marker='o', linewidth=2.5, color=cor, markersize=8,
+            markerfacecolor='white', markeredgewidth=2
+        )
+        ax.set_title(titulo, fontsize=14, fontweight='bold',
+                     color='#1C1C1C', pad=15)
+        ax.set_xlabel('Numero de Clusters (K)', fontsize=12,
+                      fontweight='bold', color='#4A4A4A')
+        ax.set_xticks(df_resultados[coluna_k])
+        ax.tick_params(axis='both', colors='#4A4A4A', labelsize=11)
+        sns.despine(ax=ax)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_distribuicao_clusters(
+    labels,
+    titulo='Distribuicao de Registros por Cluster',
+    xlabel='ID do Cluster',
+    ylabel='Volume de Registros',
+    limiar_destaque=10000,
+    cor_majoritario='#7F8C8D',
+    cor_nicho='#C00000',
+    figsize=(10, 5)
+):
+    """
+    Plota a distribuicao de registros por cluster, destacando grupos
+    com volume abaixo de um limiar como nichos.
+
+    A contagem e calculada dinamicamente via np.unique, sem dicionario
+    hardcoded.
+
+    Parametros
+    ----------
+    labels : np.ndarray
+        Array de labels de cluster (ex: saida de km.labels_ ou fit_predict).
+    titulo : str
+        Titulo do grafico.
+    xlabel : str
+        Rotulo do eixo X.
+    ylabel : str
+        Rotulo do eixo Y.
+    limiar_destaque : int
+        Clusters com volume menor que este valor recebem cor de destaque.
+    cor_majoritario : str
+        Cor para clusters acima do limiar.
+    cor_nicho : str
+        Cor para clusters abaixo do limiar.
+    figsize : tuple
+        Dimensoes da figura (largura, altura).
+    """
+    clusters_ids, contagens = np.unique(labels, return_counts=True)
+
+    cores = [
+        cor_nicho if v < limiar_destaque else cor_majoritario
+        for v in contagens
+    ]
+
+    fig, ax = plt.subplots(figsize=figsize)
+    barras = ax.bar(clusters_ids, contagens, color=cores, edgecolor='none')
+
+    ax.set_title(titulo, fontsize=14, fontweight='bold',
+                 color='#1C1C1C', pad=20)
+    ax.set_xlabel(xlabel, fontsize=11, fontweight='bold', color='#4A4A4A')
+    ax.set_ylabel(ylabel, fontsize=11, fontweight='bold', color='#4A4A4A')
+
+    ax.bar_label(barras, fmt='{:.0f}', padding=5, color='#333333',
+                 fontweight='bold', fontsize=10)
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_color('#BDC3C7')
+    ax.spines['bottom'].set_color('#BDC3C7')
+
+    ax.set_xticks(clusters_ids)
+    ax.tick_params(axis='both', which='major', labelsize=10, color='#4A4A4A')
+    ax.grid(axis='y', linestyle='--', alpha=0.4, color='#D5D8DC')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_clusters_2d_plotly(
+    df_proj,
+    col_x,
+    col_y,
+    col_cluster='Cluster',
+    mapa_cores=None,
+    n_amostra=5000,
+    titulo='Projecao 2D dos Clusters',
+    width=900,
+    height=600,
+    random_state=42
+):
+    """
+    Gera uma projecao 2D interativa com Plotly, amostrando os dados
+    para performance e aplicando a paleta de cores por cluster.
+
+    Parametros
+    ----------
+    df_proj : pd.DataFrame
+        DataFrame com as colunas de projecao e a coluna de cluster.
+    col_x, col_y : str
+        Nomes das colunas dos eixos X e Y.
+    col_cluster : str
+        Nome da coluna de identificacao do cluster.
+    mapa_cores : dict or None
+        Dicionario mapeando cluster_id -> cor. Se None, usa paleta default.
+    n_amostra : int
+        Tamanho da amostra para renderizacao.
+    titulo : str
+        Titulo do grafico.
+    width, height : int
+        Dimensoes do grafico em pixels.
+    random_state : int
+        Semente para reproducibilidade da amostragem.
+
+    Retorna
+    -------
+    plotly.graph_objects.Figure
+        Figura Plotly renderizada.
+    """
+    df_amostra = df_proj.sample(n=min(n_amostra, len(df_proj)),
+                                random_state=random_state).copy()
+    df_amostra[col_cluster] = df_amostra[col_cluster].astype(str)
+
+    if mapa_cores is not None:
+        mapa_str = {str(k): v for k, v in mapa_cores.items()}
+    else:
+        mapa_str = None
+
+    fig = px.scatter(
+        df_amostra, x=col_x, y=col_y, color=col_cluster,
+        color_discrete_map=mapa_str, opacity=0.7,
+        render_mode='svg', title=titulo,
+        hover_data={col_x: False, col_y: False, col_cluster: True}
+    )
+
+    fig.update_layout(
+        plot_bgcolor='white',
+        title_font=dict(size=18, color='#1C1C1C', family='Arial'),
+        legend_title_text='ID do Cluster',
+        legend=dict(orientation='h', yanchor='bottom', y=1.02,
+                    xanchor='right', x=1,
+                    font=dict(size=12, color='#4A4A4A')),
+        width=width, height=height,
+        margin=dict(l=40, r=40, t=80, b=40)
+    )
+
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#F2F3F4',
+                     title_font=dict(size=12, color='#4A4A4A'), zeroline=False)
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#F2F3F4',
+                     title_font=dict(size=12, color='#4A4A4A'), zeroline=False)
+
+    fig.show()
+    return fig
+
+
+def plot_clusters_3d_matplotlib(
+    df_proj,
+    cols_xyz=('PC1', 'PC2', 'PC3'),
+    labels=None,
+    mapa_cores=None,
+    titulo='Projecao 3D (PCA): Visao Espacial dos Clusters',
+    labels_eixos=('Componente Principal 1', 'Componente Principal 2', 'Componente Principal 3'),
+    alpha=0.2,
+    s=12,
+    elev=20,
+    azim=45,
+    figsize=(12, 8)
+):
+    """
+    Gera uma projecao 3D dos clusters no Matplotlib, com paineis limpos
+    e mapeamento de cores por cluster.
+
+    Parametros
+    ----------
+    df_proj : pd.DataFrame
+        DataFrame com as colunas de projecao e, opcionalmente, a coluna de cluster.
+    cols_xyz : tuple of str
+        Nomes das colunas para os eixos X, Y, Z.
+    labels : np.ndarray or None
+        Array de labels de cluster. Se None, usa df_proj['Cluster'].
+    mapa_cores : dict or None
+        Dicionario mapeando cluster_id -> cor. Se None, usa paleta default.
+    titulo : str
+        Titulo do grafico.
+    labels_eixos : tuple of str
+        Rotulos dos eixos X, Y, Z.
+    alpha : float
+        Transparencia dos pontos.
+    s : float
+        Tamanho dos pontos.
+    elev, azim : float
+        Angulos de elevacao e azimute da camera 3D.
+    figsize : tuple
+        Dimensoes da figura (largura, altura).
+    """
+    if labels is None:
+        labels = df_proj['Cluster'].values if 'Cluster' in df_proj.columns else None
+
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, projection='3d')
+
+    if labels is not None and mapa_cores is not None:
+        cores_pontos = [mapa_cores[label] for label in labels]
+    else:
+        cores_pontos = None
+
+    ax.scatter(
+        df_proj[cols_xyz[0]], df_proj[cols_xyz[1]], df_proj[cols_xyz[2]],
+        c=cores_pontos, s=s, alpha=alpha, edgecolors='none'
+    )
+
+    ax.set_title(titulo, fontsize=16, fontweight='bold',
+                 color='#1C1C1C', pad=25)
+    ax.set_xlabel(labels_eixos[0], fontweight='bold',
+                  color='#4A4A4A', labelpad=10)
+    ax.set_ylabel(labels_eixos[1], fontweight='bold',
+                  color='#4A4A4A', labelpad=10)
+    ax.set_zlabel(labels_eixos[2], fontweight='bold',
+                  color='#4A4A4A', labelpad=10)
+
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+    ax.xaxis.pane.set_edgecolor('white')
+    ax.yaxis.pane.set_edgecolor('white')
+    ax.zaxis.pane.set_edgecolor('white')
+
+    ax.grid(True, linestyle='--', alpha=0.3, color='#BDC3C7')
+    ax.view_init(elev=elev, azim=azim)
+
+    plt.tight_layout()
+    plt.show()
