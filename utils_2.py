@@ -1289,3 +1289,448 @@ def plot_clusters_3d_matplotlib(
 
     plt.tight_layout()
     plt.show()
+
+
+def avaliar_grade_dbscan(
+    X_tratado,
+    grade_eps,
+    grade_min_samples,
+    sample_size=10000,
+    random_state=42,
+):
+    """
+    Varredura de hiperparametros para DBSCAN.
+
+    Parametros
+    ----------
+    X_tratado : pd.DataFrame
+        Base padronizada (sem coordenadas geograficas).
+    grade_eps : list
+        Valores de epsilon (raio de vizinhanca) a testar.
+    grade_min_samples : list
+        Valores de minimo de amostras por vizinhanca a testar.
+    sample_size : int
+        Tamanho do subsample para o silhouette_score.
+    random_state : int
+        Semente para reproducibilidade.
+
+    Retorna
+    -------
+    pd.DataFrame
+        DataFrame com metricas para cada combinacao de hiperparametros.
+    """
+    from sklearn.cluster import DBSCAN
+    from sklearn.metrics import (
+        silhouette_score,
+        davies_bouldin_score,
+        calinski_harabasz_score,
+    )
+
+    resultados = []
+
+    print('Iniciando varredura de hiperparametros do DBSCAN...\n')
+
+    for eps in grade_eps:
+        for min_samples in grade_min_samples:
+            modelo = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1)
+            labels = modelo.fit_predict(X_tratado)
+
+            n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+            qtd_ruido = list(labels).count(-1)
+            perc_ruido = (qtd_ruido / len(labels)) * 100
+
+            if n_clusters > 1:
+                sil = silhouette_score(
+                    X_tratado, labels,
+                    sample_size=sample_size, random_state=random_state,
+                )
+                db = davies_bouldin_score(X_tratado, labels)
+                ch = calinski_harabasz_score(X_tratado, labels)
+            else:
+                sil, db, ch = np.nan, np.nan, np.nan
+
+            resultados.append({
+                'eps': eps,
+                'min_samples': min_samples,
+                'N_Clusters': n_clusters,
+                '%_Ruido': round(perc_ruido, 2),
+                'Silhouette': sil,
+                'Davies_Bouldin': db,
+                'Calinski_Harabasz': ch,
+            })
+
+            print(
+                f'Testado: eps={eps:<4} | min_samples={min_samples:<3} '
+                f'-> Clusters: {n_clusters:<2} | Ruido: {perc_ruido:.1f}%'
+            )
+
+    return pd.DataFrame(resultados)
+
+
+def plot_metricas_dbscan(df_dbscan):
+    """
+    Plota 1x3 subplots com métricas de validação e taxa de ruído para DBSCAN.
+    Aderente ao padrão visual corporativo (tons de cinza e destaques em vermelho).
+
+    Parametros
+    ----------
+    df_dbscan : pd.DataFrame
+        DataFrame de saída de avaliar_grade_dbscan, com colunas
+        'eps', 'min_samples', 'Silhouette', 'Davies_Bouldin', '%_Ruido'.
+    """
+    # 1. Configuração de estilo base limpo
+    sns.set_theme(style="white")
+    
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig.suptitle(
+        'Métricas de Validação e Taxa de Ruído: DBSCAN (por Epsilon e Min Samples)',
+        fontsize=16, fontweight='bold', color='#1C1C1C', y=1.05
+    )
+
+    metricas = ['Silhouette', 'Davies_Bouldin', '%_Ruido']
+    titulos = [
+        'Silhouette Score\n(Maior = Melhor)',
+        'Davies-Bouldin Index\n(Menor = Melhor)',
+        'Percentual de Ruído (%)\n(Proporção da Base)'
+    ]
+
+    # 2. Construção dinâmica da paleta corporativa (Transição de Cinza para Vermelho Escuro)
+    n_colors = df_dbscan['min_samples'].nunique()
+    paleta_corporativa = sns.blend_palette(['#BDC3C7', '#7F8C8D', '#E74C3C', '#8B0000'], n_colors=n_colors)
+
+    for i, (metrica, titulo) in enumerate(zip(metricas, titulos)):
+        ax = axes[i]
+        
+        # 3. Plotagem das linhas com espessura de destaque
+        sns.lineplot(
+            data=df_dbscan, x='eps', y=metrica,
+            hue='min_samples', marker='o', ax=ax,
+            palette=paleta_corporativa, linewidth=2.5, markersize=8
+        )
+        
+        # 4. Formatação de Títulos e Eixos para melhor legibilidade
+        ax.set_title(titulo, fontsize=13, fontweight='bold', color='#34495E', pad=15)
+        ax.set_xlabel('eps (Raio de Vizinhança)', fontsize=11, fontweight='bold', color='#4A4A4A')
+        ax.set_ylabel('')  # Remove os rótulos automáticos (ex: "%_Ruido") para um visual mais limpo
+
+        # 5. Adição de Elementos Informativos de Referência
+        if metrica == 'Silhouette':
+            ax.axhline(y=0, color='#BDC3C7', linestyle='--', linewidth=1.5, zorder=0)
+        if metrica == '%_Ruido':
+            ax.set_ylim(0, 100)
+
+        # 6. Limpeza Visual (Remoção de bordas e adição de grid horizontal suave)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#BDC3C7')
+        ax.spines['bottom'].set_color('#BDC3C7')
+        ax.grid(axis='y', linestyle='--', alpha=0.4, color='#BDC3C7')
+        
+        # 7. Organização da Legenda
+        if i == 2:
+            # Move a legenda apenas para o último gráfico, alinhada à direita
+            ax.legend(
+                title='min_samples', fontsize=10, title_fontsize=11,
+                frameon=True, facecolor='white', edgecolor='#BDC3C7',
+                bbox_to_anchor=(1.05, 1), loc='upper left'
+            )
+        else:
+            # Remove legendas repetitivas dos dois primeiros gráficos
+            if ax.get_legend() is not None:
+                ax.get_legend().remove()
+
+    plt.tight_layout()
+    plt.show()
+
+def avaliar_grade_hdbscan(
+    X_tratado,
+    grade_min_cluster_size,
+    grade_min_samples,
+    sample_size=10000,
+    random_state=42,
+):
+    """
+    Varredura de hiperparametros para HDBSCAN.
+
+    Parametros
+    ----------
+    X_tratado : pd.DataFrame
+        Base padronizada (sem coordenadas geograficas).
+    grade_min_cluster_size : list
+        Valores de tamanho minimo de cluster a testar.
+    grade_min_samples : list
+        Valores de amostras minimas por vizinhanca a testar.
+    sample_size : int
+        Tamanho do subsample para o silhouette_score.
+    random_state : int
+        Semente para reproducibilidade.
+
+    Retorna
+    -------
+    pd.DataFrame
+        DataFrame com metricas para cada combinacao de hiperparametros.
+    """
+    import hdbscan
+    from sklearn.metrics import (
+        silhouette_score,
+        davies_bouldin_score,
+        calinski_harabasz_score,
+    )
+
+    resultados = []
+
+    print('Iniciando varredura de hiperparametros do HDBSCAN...\n')
+
+    for min_cluster_size in grade_min_cluster_size:
+        for min_samples in grade_min_samples:
+            modelo = hdbscan.HDBSCAN(
+                min_cluster_size=min_cluster_size,
+                min_samples=min_samples,
+                core_dist_n_jobs=-1,
+            )
+            labels = modelo.fit_predict(X_tratado)
+
+            n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+            qtd_ruido = list(labels).count(-1)
+            perc_ruido = (qtd_ruido / len(labels)) * 100
+
+            if n_clusters > 1:
+                sil = silhouette_score(
+                    X_tratado, labels,
+                    sample_size=sample_size, random_state=random_state,
+                )
+                db = davies_bouldin_score(X_tratado, labels)
+                ch = calinski_harabasz_score(X_tratado, labels)
+            else:
+                sil, db, ch = np.nan, np.nan, np.nan
+
+            resultados.append({
+                'min_cluster_size': min_cluster_size,
+                'min_samples': min_samples,
+                'N_Clusters': n_clusters,
+                '%_Ruido': round(perc_ruido, 2),
+                'Silhouette': sil,
+                'Davies_Bouldin': db,
+                'Calinski_Harabasz': ch,
+            })
+
+            print(
+                f'Testado: min_cluster_size={min_cluster_size:<3} '
+                f'| min_samples={min_samples:<2} '
+                f'-> Clusters: {n_clusters:<2} | Ruido: {perc_ruido:.1f}%'
+            )
+
+    return pd.DataFrame(resultados)
+
+
+def plot_metricas_hdbscan(df_hdbscan):
+    """
+    Plota 1x3 subplots com métricas de validação e taxa de ruído para HDBSCAN.
+    Aderente ao padrão visual corporativo (tons de cinza e destaques em vermelho).
+
+    Parametros
+    ----------
+    df_hdbscan : pd.DataFrame
+        DataFrame de saída de avaliar_grade_hdbscan, com colunas
+        'min_cluster_size', 'min_samples', 'Silhouette', 'Davies_Bouldin', '%_Ruido'.
+    """
+    # 1. Configuração de estilo base limpo
+    sns.set_theme(style="white")
+    
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig.suptitle(
+        'Métricas de Validação e Taxa de Ruído: HDBSCAN (por Min Cluster Size e Min Samples)',
+        fontsize=16, fontweight='bold', color='#1C1C1C', y=1.05
+    )
+
+    metricas = ['Silhouette', 'Davies_Bouldin', '%_Ruido']
+    titulos = [
+        'Silhouette Score\n(Maior = Melhor)',
+        'Davies-Bouldin Index\n(Menor = Melhor)',
+        'Percentual de Ruído (%)\n(Proporção da Base)'
+    ]
+
+    # 2. Construção dinâmica da paleta corporativa (Transição de Cinza para Vermelho Escuro)
+    n_colors = df_hdbscan['min_samples'].nunique()
+    paleta_corporativa = sns.blend_palette(['#BDC3C7', '#7F8C8D', '#E74C3C', '#8B0000'], n_colors=n_colors)
+
+    for i, (metrica, titulo) in enumerate(zip(metricas, titulos)):
+        ax = axes[i]
+        
+        # 3. Plotagem das linhas com espessura de destaque
+        sns.lineplot(
+            data=df_hdbscan, x='min_cluster_size', y=metrica,
+            hue='min_samples', marker='o', ax=ax,
+            palette=paleta_corporativa, linewidth=2.5, markersize=8
+        )
+        
+        # 4. Formatação de Títulos e Eixos para melhor legibilidade
+        ax.set_title(titulo, fontsize=13, fontweight='bold', color='#34495E', pad=15)
+        ax.set_xlabel('min_cluster_size (Tamanho Mínimo)', fontsize=11, fontweight='bold', color='#4A4A4A')
+        ax.set_ylabel('')  # Remove os rótulos automáticos do eixo Y para um visual mais limpo
+
+        # 5. Adição de Elementos Informativos de Referência
+        if metrica == 'Silhouette':
+            ax.axhline(y=0, color='#BDC3C7', linestyle='--', linewidth=1.5, zorder=0)
+        if metrica == '%_Ruido':
+            ax.set_ylim(0, 100)
+
+        # 6. Limpeza Visual (Remoção de bordas e adição de grid horizontal suave)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#BDC3C7')
+        ax.spines['bottom'].set_color('#BDC3C7')
+        ax.grid(axis='y', linestyle='--', alpha=0.4, color='#BDC3C7')
+        
+        # 7. Organização da Legenda
+        if i == 2:
+            # Move a legenda apenas para o último gráfico, alinhada à direita
+            ax.legend(
+                title='min_samples', fontsize=10, title_fontsize=11,
+                frameon=True, facecolor='white', edgecolor='#BDC3C7',
+                bbox_to_anchor=(1.05, 1), loc='upper left'
+            )
+        else:
+            # Remove legendas repetitivas dos dois primeiros gráficos
+            if ax.get_legend() is not None:
+                ax.get_legend().remove()
+
+    plt.tight_layout()
+    plt.show()
+
+
+def gerar_perfil_clusters(X_analise, col_cluster, bairros_dummies):
+    """
+    Gera o perfil quantitativo e a distribuicao geografica por cluster.
+
+    Parametros
+    ----------
+    X_analise : pd.DataFrame
+        Base em escala real (com colunas originais revertidas de log).
+    col_cluster : str
+        Nome da coluna de identificacao do cluster ('Cluster_KMeans' ou 'Cluster_HDBSCAN').
+    bairros_dummies : list of str
+        Lista com os nomes das colunas dummy de bairro.
+
+    Retorna
+    -------
+    tuple of pd.DataFrame
+        (perfil_quantitativo, distribuicao_distritos)
+    """
+    perfil = (
+        X_analise.groupby(col_cluster)
+        .agg(
+            Preco_Mediano=('price', 'median'),
+            Custo_Estadia_Mediano=('custo_estadia', 'median'),
+            Distancia_Times_Square_Mediana=('distancia_Times_Square', 'median'),
+            Reviews_Mes_Mediano=('reviews_per_month', 'median'),
+            Taxa_Reviews_Mediana=('taxa_reviews_mes', 'median'),
+            Disponibilidade_Mediana=('availability_365', 'median'),
+            Volume_Oferta_Host=('volume_oferta_dias_anfitriao', 'median'),
+            room_type_Moda=(
+                'room_type',
+                lambda x: x.mode().iloc[0] if not x.mode().empty else None,
+            ),
+            Tamanho_do_Cluster=('price', 'count'),
+        )
+        .round(2)
+    )
+
+    perfil['Perc_Base (%)'] = (
+        (perfil['Tamanho_do_Cluster'] / len(X_analise)) * 100
+    ).round(2)
+
+    distribuicao = (
+        X_analise.groupby(col_cluster)[bairros_dummies]
+        .mean()
+        .mul(100)
+        .round(1)
+    )
+
+    return perfil, distribuicao
+
+
+def plot_mapa_clusters_nyc(X_geo, labels, titulo, url_tiles_carto):
+    """
+    Plota a distribuicao geoespacial dos clusters sobre o mapa de NYC.
+
+    Parametros
+    ----------
+    X_geo : pd.DataFrame
+        Base com colunas 'latitude' e 'longitude'.
+    labels : np.ndarray
+        Array de rotulos de cluster (incluindo -1 para ruido).
+    titulo : str
+        Titulo do mapa.
+    url_tiles_carto : str
+        URL do provedor de tiles CartoDB Voyager.
+    """
+    import geopandas as gpd
+    import contextily as ctx
+    from shapely.geometry import Point
+
+    df_mapa = X_geo.copy()
+    df_mapa['Cluster'] = labels
+
+    gdf = gpd.GeoDataFrame(
+        df_mapa,
+        geometry=gpd.points_from_xy(df_mapa['longitude'], df_mapa['latitude']),
+        crs='EPSG:4326',
+    )
+    gdf_mercator = gdf.to_crs(epsg=3857)
+
+    clusters_validos = sorted(
+        [c for c in df_mapa['Cluster'].unique() if c != -1]
+    )
+    paleta_hex = sns.color_palette(
+        'tab20', n_colors=max(len(clusters_validos), 1)
+    ).as_hex()
+    mapa_cores = {c: paleta_hex[i] for i, c in enumerate(clusters_validos)}
+
+    fig, ax = plt.subplots(figsize=(14, 11))
+
+    # Ruido ao fundo
+    gdf_ruido = gdf_mercator[gdf_mercator['Cluster'] == -1]
+    if not gdf_ruido.empty:
+        gdf_ruido.plot(
+            ax=ax, color='#D5D8DC', markersize=3,
+            alpha=0.3, label='Ruido (-1)',
+        )
+
+    # Clusters validos
+    for c_id in clusters_validos:
+        gdf_c = gdf_mercator[gdf_mercator['Cluster'] == c_id]
+        gdf_c.plot(
+            ax=ax, color=mapa_cores[c_id], markersize=8,
+            alpha=0.8, label=f'Cluster {c_id}',
+        )
+
+    # Times Square (sem label no scatter para nao explodir legenda)
+    ts_lat, ts_lon = 40.7580, -73.9855
+    ts_point = gpd.GeoSeries([Point(ts_lon, ts_lat)], crs='EPSG:4326')
+    ts_point_mercator = ts_point.to_crs(epsg=3857)
+
+    ts_point_mercator.plot(
+        ax=ax, color='black', marker='*', markersize=350,
+        edgecolor='white', zorder=5,
+    )
+    ax.scatter(
+        [], [], color='black', marker='*', s=120,
+        edgecolor='white', label='Times Square',
+    )
+
+    ctx.add_basemap(ax, source=url_tiles_carto)
+
+    ax.set_title(titulo, fontsize=18, fontweight='bold',
+                 color='#1C1C1C', pad=20)
+    ax.set_axis_off()
+
+    ax.legend(
+        bbox_to_anchor=(1.02, 1), loc='upper left',
+        frameon=True, facecolor='white', edgecolor='#BDC3C7',
+        title='Legenda', title_fontproperties={'weight': 'bold'},
+        markerscale=1.8, labelspacing=0.8, handletextpad=0.8, borderpad=0.8,
+    )
+
+    plt.tight_layout()
+    plt.show()
