@@ -11,11 +11,11 @@
 
 ---
 
-## 📑 Sumário Executivo
+## 📑 Sumário 
 
 | Seção | Tópico |
 | :---: | :--- |
-| **1** | [🎯 Contexto de Negócio e Hipóteses Validadas](#-1-contexto-de-negócio-e-hipóteses-validadas) |
+| **1** | [🎯 Contexto de Negócio e Hipóteses ](#-1-contexto-de-negócio-e-hipóteses-validadas) |
 | **2** | [⚙️ Arquitetura do Pipeline e Feature Engineering](#️-2-arquitetura-do-pipeline-e-feature-engineering) |
 | **3** | [📐 Experimento A/B de Escalonamento no Espaço Euclidiano](#-3-experimento-ab-de-escalonamento-no-espaço-euclidiano) |
 | **4** | [🔬 Jornada de Modelagem: Por que o K-Means e o DBSCAN Falham?](#-4-jornada-de-modelagem-por-que-o-k-means-e-o-dbscan-falham) |
@@ -23,23 +23,24 @@
 | **6** | [🗺️ Perfis Comerciais e Inteligência Geoespacial](#️-6-perfis-comerciais-e-inteligência-geoespacial) |
 | **7** | [🗂️ Estrutura do Repositório e Reprodutibilidade (`configs.yaml`)](#️-7-estrutura-do-repositório-e-reprodutibilidade-configsyaml) |
 | **8** | [🚀 Como Executar Localmente](#-8-como-executar-localmente) |
-| **9** | [⚠️ Limitações Metodológicas e Próximos Passos](#️-9-limitações-metodológicas-e-próximos-passos) |
 
 ---
 
-## 🎯 1. Contexto de Negócio e Hipóteses Validadas
+## 🎯 1. Contexto de Negócio e Hipóteses 
 
 Este projeto desenvolve uma solução completa de **aprendizado não supervisionado** para segmentação estratégica dos anúncios do **Airbnb em Nova York** (`AB_NYC_2019.csv`), abrangendo **48.884 imóveis válidos** distribuídos nos **5 distritos (*boroughs*)** da cidade (**Manhattan, Brooklyn, Queens, Bronx e Staten Island**).
 
-Em vez de aplicar cortes arbitrários de regras de negócio, o estudo investiga a **geometria intrínseca e a estrutura de densidade** do mercado para responder: *Quais são os verdadeiros perfis operacionais de locação em NYC e como eles se distribuem no espaço urbano?*
+- Essa solução baseia-se no Dataset do Kaggle: <ahttps://www.kaggle.com/datasets/dgomonov/new-york-city-airbnb-open-data<a
 
-### 💡 Hipóteses de Negócio Avaliadas
+Em vez de aplicar cortes arbitrários ou estratégias hardcodadas, o estudo investiga a **geometria intrínseca e a estrutura de densidade** do mercado para responder: `Quais são os verdadeiros perfis operacionais de locação em NYC e como eles se distribuem no espaço urbano?`
+
+### 💡 Hipóteses de Negócio Avaliadas:
 
 | # | Hipótese de Negócio | Variáveis-Chave | Impacto Estratégico & Ação Comercial | Status |
 | :---: | :--- | :--- | :--- | :---: |
-| **H1** | **Porte Operacional do Locador:** Anfitriões corporativos com múltiplos imóveis e calendário aberto o ano todo formam um ecossistema distinto de moradores casuais de imóvel único. | `calculated_host_listings_count`, `availability_365`, `volume_oferta_dias_anfitriao` | Políticas comerciais B2B, gestão de contas-chave (*Key Accounts*) e fiscalização de *hosts* hoteleiros. | ✅ **Confirmada** *(Cluster 8 — Midtown)* |
-| **H2** | **Vocação Regional e Tipologia:** Quartos privativos em distritos periféricos operam sob lógica de giro rápido e baixo ticket, divergindo dos imóveis inteiros de alto padrão no centro turístico. | `room_type`, `neighbourhood_group`, `price`, `custo_estadia`, `distancia_Times_Square` | Precificação dinâmica regionalizada (*Smart Pricing*) e campanhas de aquisição segmentadas por bairro. | ✅ **Confirmada** *(Clusters 0 a 7)* |
-| **H3** | **Maturidade e Sazonalidade do Anúncio:** Imóveis consolidados com histórico denso de avaliações separam-se de anúncios recém-lançados ou sazonais de baixa disponibilidade. | `number_of_reviews`, `reviews_per_month`, `meses_ativo`, `availability_365` | Réguas de retenção, ativação de *hosts* recém-cadastrados e auditoria de anúncios inativos/anômalos. | ✅ **Confirmada** *(Clusters 1, 5, 6 vs. -1)* |
+| **H1** | **Porte Operacional do Locador:** Anfitriões corporativos com múltiplos imóveis e calendário aberto o ano todo formam um ecossistema distinto de locadores casuais?. | `calculated_host_listings_count`, `availability_365`, `volume_oferta_dias_anfitriao` | Políticas comerciais B2B, gestão de contas-chave (*Key Accounts*) e fiscalização de *hosts* hoteleiros. | ✅ **Confirmada** *(Cluster 8 — Midtown)* |
+| **H2** | **Vocação Regional e Tipologia:** Quartos privativos em distritos periféricos operam sob lógica de giro rápido e baixo ticket, divergindo dos imóveis inteiros de alto padrão no centro turístico?| `room_type`, `neighbourhood_group`, `price`, `custo_estadia`, `distancia_Times_Square` | Precificação dinâmica regionalizada (*Smart Pricing*) e campanhas de aquisição segmentadas por bairro. | ✅ **Confirmada** *(Clusters 0 a 7)* |
+| **H3** | **Maturidade e Sazonalidade de Anúncios:** Imóveis consolidados com histórico denso de avaliações separam-se de anúncios recém-lançados ou sazonais de baixa disponibilidade ? | `number_of_reviews`, `reviews_per_month`, `meses_ativo`, `availability_365` | Réguas de retenção, ativação de *hosts* recém-cadastrados e auditoria de anúncios inativos/anômalos. | ✅ **Confirmada** *(Clusters 1, 5, 6 vs. -1)* |
 
 ---
 
@@ -51,9 +52,7 @@ A base original possui **48.895 registros × 16 colunas**. Após o filtro de san
 
 Variáveis financeiras e de contagem em plataformas digitais seguem distribuições de **cauda pesada (*Pareto / Log-Normal*)**. A variável `price` original exibia **assimetria extrema de `19,12`** e **curtose de `585,67`** (diárias de até US$ 10.000), o que inviabilizaria qualquer métrica baseada em distância euclidiana.
 
-<p align="center">
-  <img src="reports/figures/01_eda_price_log1p.png" alt="Transformação Log1p na distribuição de Preço" width="760"/>
-</p>
+<img width="984" height="584" alt="image" src="https://github.com/user-attachments/assets/bdc3ede6-1dd7-4041-9c25-fd36bba17453" />
 
 | Variável | Assimetria Bruta (*Skewness*) | Curtose Bruta (*Kurtosis*) | Transformação Aplicada | Justificativa Técnica |
 | :--- | :---: | :---: | :---: | :--- |
@@ -66,24 +65,22 @@ Variáveis financeiras e de contagem em plataformas digitais seguem distribuiç�
 
 ---
 
-### 🧪 2.2. Engenharia de Atributos Compostos e Geodésicos
+### 🧪 2.2. Features Criadas para obter maior poder preditivo
 
 Para capturar **efeitos de interação comercial** que variáveis isoladas não revelam, foram criadas **4 features derivadas**:
 
 | Feature Criada | Fórmula Matemática | Significado Executivo |
 | :--- | :--- | :--- |
 | 📍 `distancia_Times_Square_log` | $\ln\left(1 + 2R \arcsin\sqrt{\sin^2\left(\frac{\Delta\phi}{2}\right) + \cos\phi_1\cos\phi_2\sin^2\left(\frac{\Delta\lambda}{2}\right)}\right)$ | **Distância Geodésica de Haversine** ($R = 6.371\text{ km}$) até a **Times Square** (`40.7580, -73.9855`). Corrige a curvatura terrestre e mede a centralidade turística real. |
-| 💵 `custo_estadia_log` | $\ln(1 + \text{price} \times \text{minimum\_nights})$ | **Barreira de Entrada (Ticket Mínimo):** diferencia uma diária alta de 1 noite de uma diária moderada que exige 30 noites mínimas. |
-| 📦 `volume_oferta_dias_anfitriao_log` | $\ln(1 + \text{availability\_365} \times \text{host\_listings\_count})$ | **Capacidade Operacional do Anfitrião:** quantifica o estoque anual de *dias-imóvel* ofertados pelo locador na plataforma. |
-| ⏳ `meses_ativo_log` | $\ln\left(1 + \frac{\text{number\_of\_reviews}}{\text{reviews\_per\_month} + 10^{-6}}\right)$ | **Maturidade do Anúncio:** estima há quantos meses o imóvel opera ativamente (retorna `0` para imóveis sem avaliações). |
+| 💵 `custo_estadia_log` | $\ln(1 + \text{price} \times \text{minimum nights})$ | **Barreira de Entrada (Ticket Mínimo):** diferencia uma diária alta de 1 noite de uma diária moderada que exige 30 noites mínimas. |
+| 📦 `volume_oferta_dias_anfitriao_log` | $\ln(1 + \text{availability 365} \times \text{host listings count})$ | **Capacidade Operacional do Anfitrião:** quantifica o estoque anual de *dias-imóvel* ofertados pelo locador na plataforma. |
+| ⏳ `meses_ativo_log` | $\ln\left(1 + \frac{\text{number of reviews}}{\text{reviews per month} + 10^{-6}}\right)$ | **Maturidade do Anúncio:** estima há quantos meses o imóvel opera ativamente (retorna `0` para imóveis sem avaliações). |
 
 ---
 
-### 🧹 2.3. Codificação, Descarte de Colinearidade (`|r| >= 0.70`) e Seleção Final
+### 🧹 2.3. Enconding, Análise Estatística e Seleção Final
 
-<p align="center">
-  <img src="reports/figures/01_eda_matriz_correlacao.png" alt="Matriz de Correlação das Features" width="720"/>
-</p>
+<img width="952" height="800" alt="image" src="https://github.com/user-attachments/assets/4111bd0e-2d33-4574-a768-16bf5a20a8eb" />
 
 1. **Codificação Categórica:**
    * **`room_type` (Ordinal Encoding):** `"Shared room": 0`, `"Private room": 1`, `"Entire home/apt": 2` — preserva a hierarquia natural de privacidade e área exclusiva sem inflar a dimensionalidade.
@@ -97,6 +94,8 @@ Para capturar **efeitos de interação comercial** que variáveis isoladas não 
 ---
 
 ## 📐 3. Experimento A/B de Escalonamento no Espaço Euclidiano
+
+- Pergunta natural: O Escalonamento faz diferença nas features? Diante disso, fizemos um teste A/B.
 
 Para evitar deformar as variáveis binárias (`0/1`) e ordinais, o pré-processamento aplica:
 1. **Clipping nos quantis `1%` (`0.01`) e `99%` (`0.99`)** exclusivamente sobre as **7 variáveis numéricas contínuas**.
@@ -117,7 +116,7 @@ Sorteando **10 pares de anúncios reais** (`random_state = 10`) e decompondo a c
 
 ---
 
-## 🔬 4. Jornada de Modelagem: Por que o K-Means e o DBSCAN Falham?
+## 🔬 4. Modelage: Por que o K-Means e o DBSCAN Falham?
 
 ### 4.1. Baseline Particional: K-Means ($K=8$)
 
@@ -129,29 +128,29 @@ Na comparação da curva de inércia (*Método Elbow*), o tratamento com *Clippi
 
 Avaliando as métricas internas de validação geométrica no intervalo $K \in [2, 10]$, selecionamos **$K=8$** como melhor ponto de inflexão (`Inertia = 90.314,31`, `Silhouette = 0,17`, `Davies-Bouldin = 1,74`, `Calinski-Harabasz = 7.811,04`):
 
-<p align="center">
-  <img src="reports/figures/02_kmeans_metricas.png" alt="Métricas de Validação do K-Means (K=2 a K=10)" width="760"/>
-</p>
+<img width="1323" height="439" alt="image" src="https://github.com/user-attachments/assets/8e83dfdd-d23c-4374-8d5d-d4f251130c59" />
+
 
 #### 📊 Distribuição de Volume por Cluster no K-Means ($K=8$)
 
 À primeira vista, o gráfico de barras de volume do K-Means sugere uma partição "bem comportada", dividindo os 48.884 anúncios em **8 blocos de tamanho similar** (variando entre `4.696` e `8.477` imóveis por grupo):
 
-<p align="center">
-  <img src="reports/figures/02_kmeans_distribuicao.png" alt="Distribuição de Registros por Cluster — K-Means (K=8)" width="720"/>
-</p>
+<img width="823" height="408" alt="image" src="https://github.com/user-attachments/assets/66d93cd8-6323-4b16-b982-638c107fdc34" />
+
 
 #### ❌ Por que o K-Means NÃO Funciona neste Problema? (Diagnóstico Topológico PCA & UMAP)
 
-Essa uniformidade de tamanho do K-Means é, na realidade, um **artefato matemático das células de Voronoi**. Quando projetamos os 8 clusters do K-Means no espaço linear (**PCA**, que retém `50,83%` da variância em 2D) e no espaço topológico não-linear (**UMAP**), a falha estrutural fica evidente:
+Essa uniformidade de tamanho do K-Means é, na realidade, um **Problema Estrutural**. Quando projetamos os 8 clusters do K-Means no espaço linear (**PCA**, que retém `50,83%` da variância em 2D) e no espaço topológico não-linear (**UMAP**), a falha estrutural fica evidente:
 
-<p align="center">
-  <img src="reports/figures/02_kmeans_pca.png" alt="Projeção 2D (PCA) — Clusters K-Means (K=8)" width="740"/>
-</p>
+- Análise **PCA (Linear)
 
-<p align="center">
-  <img src="reports/figures/02_kmeans_umap.png" alt="Projeção 2D (UMAP) — Colapso Topológico do K-Means (K=8)" width="740"/>
-</p>
+<img width="900" height="598" alt="image" src="https://github.com/user-attachments/assets/60c9f367-cd41-4533-8fb8-8f83c88eb365" />
+
+
+- Análise **UMAP (Não Linear)
+
+<img width="899" height="598" alt="image" src="https://github.com/user-attachments/assets/cc84b7d1-d406-45bd-b3b8-5957bbf2a37e" />
+
 
 > [!WARNING]
 > **Diagnóstico das 3 Falhas Críticas do K-Means ($K=8$):**
@@ -165,9 +164,7 @@ Essa uniformidade de tamanho do K-Means é, na realidade, um **artefato matemát
 
 Para superar a geometria esférica do K-Means e isolar outliers como ruído (`label = -1`), testamos o **DBSCAN** em uma grade de **20 combinações** (`eps` $\in \{0.3, 0.5, 0.8, 1.0, 1.2\} \times$ `min_samples` $\in \{15, 30, 50, 100\}$), calculando as métricas exclusivamente sobre os clusters válidos:
 
-<p align="center">
-  <img src="reports/figures/02_dbscan_metricas.png" alt="Painel de Métricas do DBSCAN (eps x min_samples)" width="760"/>
-</p>
+<img width="1334" height="385" alt="image" src="https://github.com/user-attachments/assets/3925def0-d70e-4cae-a64f-1d12297f99fa" />
 
 | Faixa de Raio (`eps`) | % de Ruído (`-1`) | Nº de Clusters | Comportamento Observado & Diagnóstico |
 | :---: | :---: | :---: | :--- |
@@ -186,9 +183,7 @@ O **HDBSCAN (*Hierarchical Density-Based Spatial Clustering of Applications with
 
 Avaliamos uma grade de **16 combinações** (`min_cluster_size` $\in \{50, 100, 200, 500\} \times$ `min_samples` $\in \{15, 30, 50, 70\}$):
 
-<p align="center">
-  <img src="reports/figures/02_hdbscan_metricas.png" alt="Painel de Métricas do HDBSCAN (min_cluster_size x min_samples)" width="760"/>
-</p>
+<img width="1335" height="383" alt="image" src="https://github.com/user-attachments/assets/c5d20caa-5659-4ba5-8f66-3282e06f2798" />
 
 ### 🎯 Seleção dos Hiperparâmetros Ótimos (`configs.yaml`)
 
@@ -206,9 +201,7 @@ Avaliamos uma grade de **16 combinações** (`min_cluster_size` $\in \{50, 100, 
 
 Diferente das 8 barras artificialmente iguais do K-Means, a distribuição de volume do HDBSCAN reflete a **assimetria real do mercado imobiliário de Nova York** — destacando os 4 megaclusters consolidados de Manhattan e Brooklyn (`1`, `5`, `6`, `7`), o polo intermediário do Queens (`2`, `3`), os 3 nichos específicos (`0`, `4`, `8`) e a camada de ruído (`-1`):
 
-<p align="center">
-  <img src="reports/figures/02_hdbscan_distribuicao.png" alt="Distribuição de Registros por Cluster e Ruído (HDBSCAN)" width="740"/>
-</p>
+<img width="990" height="486" alt="image" src="https://github.com/user-attachments/assets/861a46bb-6c54-4165-be06-0a2240e8e471" />
 
 ---
 
@@ -216,9 +209,7 @@ Diferente das 8 barras artificialmente iguais do K-Means, a distribuição de vo
 
 Projetando os rótulos do HDBSCAN sobre a **mesma variedade topológica 2D do UMAP**, comprova-se o salto qualitativo: **cada ilha conexa de densidade recebe um cluster íntegro**, sem cortes artificiais ao meio, enquanto o ruído (`-1`, em cinza claro) envolve apenas as bordas difusas:
 
-<p align="center">
-  <img src="reports/figures/02_hdbscan_umap.png" alt="Projeção 2D (UMAP) — Clusters de Densidade vs Ruído (HDBSCAN)" width="740"/>
-</p>
+<img width="901" height="601" alt="image" src="https://github.com/user-attachments/assets/ea98398c-3522-43c3-90ea-94f8c6f86e40" />
 
 ---
 
@@ -241,9 +232,7 @@ Os **9 clusters válidos** do HDBSCAN (`0` a `8`) + **Ruído (`-1`)** foram perf
 
 O gráfico de violino abaixo compara os **5 Perfis Comerciais** (excluindo o ruído) nas 3 dimensões operacionais mais discriminantes: **Capacidade de Oferta do Host (`volume_oferta_dias_anfitriao`)**, **Ticket Total da Estadia (`custo_estadia`)** e **Distância até a Times Square (`distancia_Times_Square`)**:
 
-<p align="center">
-  <img src="reports/figures/02_perfil_violino_hdbscan.png" alt="Gráfico Violino — 3 Principais Categorias por Perfil Comercial (HDBSCAN)" width="780"/>
-</p>
+<img width="1338" height="465" alt="image" src="https://github.com/user-attachments/assets/eb4c3e09-e152-40d1-9ca0-792ddb7106c5" />
 
 ---
 
@@ -251,13 +240,15 @@ O gráfico de violino abaixo compara os **5 Perfis Comerciais** (excluindo o ru�
 
 Abaixo, visualizamos tanto a distribuição detalhada dos **9 clusters de densidade** quanto o mapa executivo consolidado nos **5 Perfis Comerciais**:
 
-<p align="center">
-  <img src="reports/figures/05_mapa_hdbscan_9clusters_nyc.png" alt="Mapa Geoespacial — 9 Clusters HDBSCAN em NYC" width="760"/>
-</p>
+- 9 Clusters:
 
-<p align="center">
-  <img src="reports/figures/05_mapa_hdbscan_perfis_nyc.png" alt="Mapa Geoespacial — 5 Perfis Comerciais Consolidados em NYC" width="760"/>
-</p>
+<img width="970" height="803" alt="image" src="https://github.com/user-attachments/assets/854c5020-7369-468b-8e82-4cce25738c7d" />
+
+
+- 5 Perfis comerciais:
+
+<img width="1072" height="841" alt="image" src="https://github.com/user-attachments/assets/82684429-a3ed-4d2c-9ba0-2b84a615b757" />
+
 
 ### 🔍 Interpretação Executiva das 5 Personas + Ruído
 
@@ -357,19 +348,6 @@ python scripts/segment.py data/raw/AB_NYC_2019.csv
 
 ---
 
-## ⚠️ 9. Limitações Metodológicas e Próximos Passos
-
-### 📌 Limitações Conhecidas
-* **Snapshot Estático Pré-Pandemia (2019):** Os dados refletem a estrutura do mercado de Nova York antes da pandemia e antes da implementação estrita da *Local Law 18* (2023), que restringiu severamente aluguéis de curta duração sem a presença do anfitrião.
-* **`availability_365` mede oferta futura, não taxa de ocupação:** Um imóvel com `availability_365 = 0` pode estar 100% reservado ou temporariamente bloqueado pelo anfitrião. Por isso, a variável foi combinada com `reviews_per_month` e `meses_ativo` para diferenciar inatividade de alta demanda.
-* **Pureza Distrital Associada ao One-Hot Encoding:** Como as dummies de `neighbourhood_group` compõem a matriz `X_tratado`, a separação de 100% por distrito nos 9 clusters do HDBSCAN decorre da descontinuidade binária entre bairros combinada à densidade contínua das demais 8 variáveis.
-
-### 🔭 Próximos Passos
-1. **NLP sobre Títulos de Anúncios (`name`):** Extrair *embeddings* semânticos (TF-IDF / BERT) dos títulos dos imóveis para identificar sub-nichos de luxo, estúdios executivos ou acomodações familiares dentro de cada distrito.
-2. **Inferência Indutiva com `approximate_predict`:** Habilitar `prediction_data=True` no HDBSCAN ou acoplar um classificador supervisionado leve (*LightGBM / k-NN*) sobre os rótulos consolidados para classificar novos anúncios em tempo real via API.
-3. **Análise Espacial de Vizinhança (Moran's I / LISA):** Incorporar variáveis socioeconômicas externas por *ZIP Code* e distância à malha metroviária (*MTA Subway Stations*).
-
----
 
 ## 🛠️ Tecnologias Utilizadas
 
