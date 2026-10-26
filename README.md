@@ -142,12 +142,12 @@ Avaliando as métricas internas de validação geométrica no intervalo $K \in [
 
 Essa uniformidade de tamanho do K-Means é, na realidade, um **Problema Estrutural**. Quando projetamos os 8 clusters do K-Means no espaço linear (**PCA**, que retém `50,83%` da variância em 2D) e no espaço topológico não-linear (**UMAP**), a falha estrutural fica evidente:
 
-- Análise **PCA (Linear)
+- Análise **PCA (Linear)**
 
 <img width="900" height="598" alt="image" src="https://github.com/user-attachments/assets/60c9f367-cd41-4533-8fb8-8f83c88eb365" />
 
 
-- Análise **UMAP (Não Linear)
+- Análise **UMAP (Não Linear)**
 
 <img width="899" height="598" alt="image" src="https://github.com/user-attachments/assets/cc84b7d1-d406-45bd-b3b8-5957bbf2a37e" />
 
