@@ -39,9 +39,7 @@ Três hipóteses de segmentação — centradas no **tipo de locador** e **voca�
 4. **Clusterização:** K-Means (K=8) como baseline particional → DBSCAN rejeitado por densidade heterogênea → **HDBSCAN** (`min_cluster_size=50`, `min_samples=50`) como solução campeã baseada em densidade variável
 5. **Perfilamento:** 9 clusters de densidade pura consolidados em **5 personas comerciais + ruído estruturado** (11.65% da base)
 
-<p align="center">
-  <img src="reports/figures/02_kmeans_elbow.png" alt="Curva Elbow — X_modelo vs X_tratado" width="700"/>
-</p>
+<img width="1336" height="522" alt="image" src="https://github.com/user-attachments/assets/0ec1c414-1d12-4718-b3e4-e823dbd7427f" />
 
 > O **RobustScaler** reduz a inércia de 10^8 para 10^5 e elimina a anomalia visual entre K=1 e K=3. O ponto de inflexão em K=8 orienta a decisão, mas a validação topológica (UMAP) revela que cortes esféricos não respeitam a geometria real dos dados.
 
