@@ -1,4 +1,5 @@
-# 🗽 Airbnb NYC Market Segmentation — Clusterização Geoespacial e Topológica
+# 🗽 Airbnb NYC Market Segmentation 
+# Clusterização Geoespacial e Topológica
 
 <p align="center">
   <img src="https://img.shields.io/badge/Unsupervised%20Learning-K--Means%20%7C%20DBSCAN%20%7C%20HDBSCAN-E74C3C?style=for-the-badge" alt="Unsupervised Learning"/>
