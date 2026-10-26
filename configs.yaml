@@ -1,0 +1,129 @@
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  raw_filename: "AB_NYC_2019.csv"
+  processed_filename: "master.csv"
+  predictions_output: "reports/clusters_output.csv"
+
+preprocessing:
+  min_price_filter: 0
+  fill_nulls_zero_cols:
+    - "reviews_per_month"
+  log_transform_cols:
+    - "price"
+    - "minimum_nights"
+    - "number_of_reviews"
+    - "reviews_per_month"
+    - "calculated_host_listings_count"
+  ordinal_room_type_map:
+    "Shared room": 0
+    "Private room": 1
+    "Entire home/apt": 2
+  onehot_cols:
+    - "neighbourhood_group"
+  drop_cols:
+    - "id"
+    - "name"
+    - "host_id"
+    - "host_name"
+    - "neighbourhood"
+    - "last_review"
+    - "price"
+    - "minimum_nights"
+    - "number_of_reviews"
+    - "reviews_per_month"
+    - "calculated_host_listings_count"
+  drop_collinear_cols:
+    - "minimum_nights_log"
+    - "calculated_host_listings_count_log"
+    - "number_of_reviews_log"
+  collinearity_threshold: 0.7
+  reference_landmark:
+    name: "Times Square"
+    lat: 40.7580
+    lon: -73.9855
+    earth_radius_km: 6371.0
+  clipping:
+    lower_quantile: 0.01
+    upper_quantile: 0.99
+  geo_cols:
+    - "latitude"
+    - "longitude"
+  log_revert_cols:
+    - "price_log"
+    - "reviews_per_month_log"
+    - "distancia_Times_Square_log"
+    - "custo_estadia_log"
+    - "volume_oferta_dias_anfitriao_log"
+    - "meses_ativo_log"
+  numerical_model_cols:
+    - "availability_365"
+    - "price_log"
+    - "reviews_per_month_log"
+    - "distancia_Times_Square_log"
+    - "custo_estadia_log"
+    - "volume_oferta_dias_anfitriao_log"
+    - "meses_ativo_log"
+  bairros_dummies:
+    - "neighbourhood_group_Brooklyn"
+    - "neighbourhood_group_Manhattan"
+    - "neighbourhood_group_Queens"
+    - "neighbourhood_group_Staten Island"
+
+modeling:
+  random_state: 10
+  subsample_silhouette: 10000
+  distance_experiment_n_obs: 10
+  kmeans:
+    elbow_k_range: [1, 21]
+    metrics_k_range: [2, 11]
+    best_k: 8
+    n_init: 10
+    elbow_n_init: 20
+    max_iter: 300
+  dbscan:
+    grade_eps: [0.3, 0.5, 0.8, 1.0, 1.2]
+    grade_min_samples: [15, 30, 50, 100]
+  hdbscan:
+    grade_min_cluster_size: [50, 100, 200, 500]
+    grade_min_samples: [15, 30, 50, 70]
+    best_min_cluster_size: 50
+    best_min_samples: 50
+  umap:
+    n_components: 2
+    n_neighbors: 30
+    min_dist: 0.1
+  pca:
+    n_components: 2
+
+profiles_mapping:
+  5: "1. Tradicional Brooklyn"
+  6: "1. Tradicional Brooklyn"
+  1: "2. Turístico Manhattan"
+  7: "2. Turístico Manhattan"
+  2: "3. Econômico Queens"
+  3: "3. Econômico Queens"
+  0: "4. Periferia Bronx"
+  4: "4. Periferia Bronx"
+  8: "5. Mega-Gestores (Centro)"
+  -1: "6. Ruído Estruturado"
+
+visualization:
+  carto_tiles_url: "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_4tpk_1_0dfd101156dab0c64eb2178d"
+  kmeans_colors:
+    0: "#7F8C8D"
+    1: "#C00000"
+    2: "#007006"
+    3: "#A6FF00"
+    4: "#2E86C1"
+    5: "#F39C12"
+    6: "#8E44AD"
+    7: "#34495E"
+
+artifacts:
+  model_dir: "artifacts"
+  model_filename: "modelo_hdbscan.joblib"
+  kmeans_model_filename: "kmeans_pipeline.joblib"
+  figures_dir: "reports/figures"
+  metrics_dir: "reports/metrics"
+

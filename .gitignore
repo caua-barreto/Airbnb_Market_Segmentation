@@ -18,20 +18,12 @@ __pycache__/
 .ipynb_checkpoints/
 */.ipynb_checkpoints/*
 
-# Dados pesados e raw/processed (mantendo os diretórios via .gitkeep)
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
-
 # Modelos, artefatos pesados e outputs serializados
 *.pkl
 *.pickle
-*.joblib
 *.h5
 *.parquet
 *.feather
-artifacts/*
 !artifacts/.gitkeep
 
 # Arquivos de sistema operacional e editores
@@ -47,4 +39,10 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Arquivos utilitários legados/temporários
+utils.py
+utils_2.py
+*utils*.py
+
 

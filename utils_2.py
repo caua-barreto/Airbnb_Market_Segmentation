@@ -1209,7 +1209,6 @@ def plot_clusters_2d_plotly(
                      title_font=dict(size=12, color='#4A4A4A'), zeroline=False)
 
     fig.show()
-    return fig
 
 
 def plot_clusters_3d_matplotlib(
@@ -1339,13 +1338,18 @@ def avaliar_grade_dbscan(
             qtd_ruido = list(labels).count(-1)
             perc_ruido = (qtd_ruido / len(labels)) * 100
 
-            if n_clusters > 1:
+            mask = labels != -1
+            X_valido = X_tratado[mask]
+            labels_valido = labels[mask]
+
+            if n_clusters > 1 and len(X_valido) > n_clusters:
                 sil = silhouette_score(
-                    X_tratado, labels,
-                    sample_size=sample_size, random_state=random_state,
+                    X_valido, labels_valido,
+                    sample_size=min(sample_size, len(X_valido)),
+                    random_state=random_state,
                 )
-                db = davies_bouldin_score(X_tratado, labels)
-                ch = calinski_harabasz_score(X_tratado, labels)
+                db = davies_bouldin_score(X_valido, labels_valido)
+                ch = calinski_harabasz_score(X_valido, labels_valido)
             else:
                 sil, db, ch = np.nan, np.nan, np.nan
 
@@ -1494,13 +1498,18 @@ def avaliar_grade_hdbscan(
             qtd_ruido = list(labels).count(-1)
             perc_ruido = (qtd_ruido / len(labels)) * 100
 
-            if n_clusters > 1:
+            mask = labels != -1
+            X_valido = X_tratado[mask]
+            labels_valido = labels[mask]
+
+            if n_clusters > 1 and len(X_valido) > n_clusters:
                 sil = silhouette_score(
-                    X_tratado, labels,
-                    sample_size=sample_size, random_state=random_state,
+                    X_valido, labels_valido,
+                    sample_size=min(sample_size, len(X_valido)),
+                    random_state=random_state,
                 )
-                db = davies_bouldin_score(X_tratado, labels)
-                ch = calinski_harabasz_score(X_tratado, labels)
+                db = davies_bouldin_score(X_valido, labels_valido)
+                ch = calinski_harabasz_score(X_valido, labels_valido)
             else:
                 sil, db, ch = np.nan, np.nan, np.nan
 
@@ -1545,9 +1554,9 @@ def plot_metricas_hdbscan(df_hdbscan):
 
     metricas = ['Silhouette', 'Davies_Bouldin', '%_Ruido']
     titulos = [
-        'Silhouette Score\n(Maior = Melhor)',
-        'Davies-Bouldin Index\n(Menor = Melhor)',
-        'Percentual de Ruído (%)\n(Proporção da Base)'
+        'Silhouette Score\n',
+        'Davies-Bouldin Index\n',
+        'Percentual de Ruído (%)\n'
     ]
 
     # 2. Construção dinâmica da paleta corporativa (Transição de Cinza para Vermelho Escuro)
@@ -1617,6 +1626,8 @@ def gerar_perfil_clusters(X_analise, col_cluster, bairros_dummies):
     tuple of pd.DataFrame
         (perfil_quantitativo, distribuicao_distritos)
     """
+    col_maturidade = 'meses_ativo' if 'meses_ativo' in X_analise.columns else 'taxa_reviews_mes'
+
     perfil = (
         X_analise.groupby(col_cluster)
         .agg(
@@ -1624,7 +1635,7 @@ def gerar_perfil_clusters(X_analise, col_cluster, bairros_dummies):
             Custo_Estadia_Mediano=('custo_estadia', 'median'),
             Distancia_Times_Square_Mediana=('distancia_Times_Square', 'median'),
             Reviews_Mes_Mediano=('reviews_per_month', 'median'),
-            Taxa_Reviews_Mediana=('taxa_reviews_mes', 'median'),
+            Meses_Ativo_Mediano=(col_maturidade, 'median'),
             Disponibilidade_Mediana=('availability_365', 'median'),
             Volume_Oferta_Host=('volume_oferta_dias_anfitriao', 'median'),
             room_type_Moda=(
@@ -1646,8 +1657,98 @@ def gerar_perfil_clusters(X_analise, col_cluster, bairros_dummies):
         .mul(100)
         .round(1)
     )
+    if 'neighbourhood_group_Bronx' not in distribuicao.columns:
+        distribuicao['neighbourhood_group_Bronx'] = (
+            (100.0 - distribuicao.sum(axis=1)).clip(lower=0.0).round(1)
+        )
 
     return perfil, distribuicao
+
+
+def plot_violino_perfis_hdbscan(
+    X_analise: pd.DataFrame,
+    mapa_perfis: dict,
+    col_cluster: str = 'Cluster_HDBSCAN',
+    features_principais: tuple = (
+        ('price', 'Preço da Diária (US$)', 400),
+        ('distancia_Times_Square', 'Distância até Times Square (km)', None),
+        ('availability_365', 'Disponibilidade Anual (Dias)', None),
+    ),
+    incluir_ruido: bool = False,
+    figsize: tuple = (18, 6),
+):
+    """
+    Plota gráficos de violino (1x3) comparando os Perfis Comerciais (agrupamentos
+    de clusters de negócio do HDBSCAN, e não clusters isolados) nas 3 principais
+    variáveis/categorias definidoras de cada perfil.
+
+    Parâmetros
+    ----------
+    X_analise : pd.DataFrame
+        DataFrame em escala original contendo as métricas revertidas e a coluna de cluster.
+    mapa_perfis : dict
+        Dicionário mapeando cada ID de cluster do HDBSCAN para o nome do Perfil Comercial.
+    col_cluster : str, default='Cluster_HDBSCAN'
+        Coluna contendo os rótulos de cluster do HDBSCAN.
+    features_principais : tuple of (col, titulo, limite_y)
+        As 3 principais variáveis/categorias para comparação da densidade dos perfis.
+    incluir_ruido : bool, default=False
+        Se True, inclui o Ruído (-1) nos gráficos de violino.
+    figsize : tuple, default=(18, 6)
+        Dimensões da figura.
+    """
+    df_plot = X_analise.copy()
+    df_plot['Perfil_Comercial'] = df_plot[col_cluster].map(
+        lambda c: mapa_perfis.get(c, '6. Ruído (-1)')
+    )
+
+    if not incluir_ruido:
+        df_plot = df_plot[df_plot[col_cluster] != -1].copy()
+
+    ordem_perfis = sorted(df_plot['Perfil_Comercial'].unique())
+
+    paleta_perfis = [
+        '#2E86C1', '#C00000', '#28B463', '#F39C12', '#8E44AD', '#7F8C8D'
+    ][:len(ordem_perfis)]
+
+    sns.set_theme(style='whitegrid')
+    fig, axes = plt.subplots(1, 3, figsize=figsize)
+    fig.suptitle(
+        'Distribuição de Densidade (Violin Plot) das 3 Principais Dimensões por Perfil Comercial (HDBSCAN)',
+        fontsize=15, fontweight='bold', color='#1C1C1C', y=1.03
+    )
+
+    for ax, (col, label_y, lim_y) in zip(axes, features_principais):
+        df_sub = df_plot.copy()
+        if lim_y is not None:
+            df_sub = df_sub[df_sub[col] <= lim_y]
+
+        sns.violinplot(
+            data=df_sub,
+            x='Perfil_Comercial',
+            y=col,
+            order=ordem_perfis,
+            palette=paleta_perfis,
+            inner='quartile',
+            cut=0,
+            linewidth=1.2,
+            ax=ax,
+        )
+
+        ax.set_title(label_y, fontsize=13, fontweight='bold', color='#34495E', pad=12)
+        ax.set_xlabel('')
+        ax.set_ylabel(label_y, fontsize=11, fontweight='bold', color='#4A4A4A')
+        ax.tick_params(axis='x', rotation=30, labelsize=9.5)
+        for label in ax.get_xticklabels():
+            label.set_horizontalalignment('right')
+            label.set_fontweight('bold')
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.grid(axis='y', linestyle='--', alpha=0.4)
+
+    plt.tight_layout()
+    plt.show()
 
 
 def plot_mapa_clusters_nyc(X_geo, labels, titulo, url_tiles_carto):
@@ -1683,7 +1784,7 @@ def plot_mapa_clusters_nyc(X_geo, labels, titulo, url_tiles_carto):
         [c for c in df_mapa['Cluster'].unique() if c != -1]
     )
     paleta_hex = sns.color_palette(
-        'tab20', n_colors=max(len(clusters_validos), 1)
+        'Set1', n_colors=max(len(clusters_validos), 1)
     ).as_hex()
     mapa_cores = {c: paleta_hex[i] for i, c in enumerate(clusters_validos)}
 
@@ -1700,9 +1801,10 @@ def plot_mapa_clusters_nyc(X_geo, labels, titulo, url_tiles_carto):
     # Clusters validos
     for c_id in clusters_validos:
         gdf_c = gdf_mercator[gdf_mercator['Cluster'] == c_id]
+        rotulo = f'Cluster {c_id}' if isinstance(c_id, (int, np.integer)) else str(c_id)
         gdf_c.plot(
             ax=ax, color=mapa_cores[c_id], markersize=8,
-            alpha=0.8, label=f'Cluster {c_id}',
+            alpha=0.8, label=rotulo,
         )
 
     # Times Square (sem label no scatter para nao explodir legenda)
