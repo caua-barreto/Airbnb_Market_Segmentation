@@ -273,6 +273,10 @@ Abaixo, visualizamos tanto a distribuição detalhada dos **9 clusters de densid
 
 ---
 
+Aqui está a markdown corrigida — removi o `.env.example` e ajustei a descrição do `config.py`:
+
+---
+
 ## 🗂️ 7. Estrutura do Repositório e Reprodutibilidade (`configs.yaml`)
 
 Todo o projeto foi refatorado para eliminar constantes *hardcoded*: diretórios, listas de colunas, limites de *clipping*, coordenadas geográficas, grades de hiperparâmetros e mapeamento de perfis residem no arquivo [`configs.yaml`](configs.yaml), carregado de forma centralizada por [`src/config.py`](src/config.py).
@@ -287,7 +291,7 @@ Projeto-07/
 │   └── 02_Modeling.ipynb                # Escalonamento, K-Means, DBSCAN, HDBSCAN, PCA/UMAP e Mapas
 ├── src/
 │   ├── __init__.py                      # Exportação do pacote src
-│   ├── config.py                        # Carregador centralizado do configs.yaml e variáveis .env
+│   ├── config.py                        # Carregador centralizado do configs.yaml (fonte única da verdade)
 │   ├── preprocessing.py                 # Limpeza, encoding, Haversine, clipping (1%-99%) e RobustScaler
 │   ├── modeling.py                      # K-Means, grades DBSCAN/HDBSCAN (sem ruído nas métricas), PCA/UMAP
 │   ├── profiling.py                     # Perfilamento em escala real e reconstrução da categoria base (Bronx)
@@ -302,11 +306,12 @@ Projeto-07/
 │   ├── figures/                         # Gráficos estáticos de alta resolução exportados (.png)
 │   └── metrics/                         # Tabelas de métricas (K-Means, DBSCAN, HDBSCAN) e IDs segmentados
 ├── configs.yaml                         # Fonte única da verdade (parâmetros de dados, features e modelos)
-├── .env.example                         # Exemplo de variáveis de ambiente (CONFIG_PATH, CARTO_TILES_URL)
 ├── main.py                              # Orquestrador ponta a ponta via linha de comando
 ├── requirements.txt                     # Dependências do ambiente Python
 └── README.md                            # Documentação executiva e técnica do projeto
 ```
+
+> O URL dos tiles do CartoDB (incluindo a chave de acesso aos mapas base) está centralizado em `configs.yaml` sob `visualization.carto_tiles_url`. **Não é necessário arquivo `.env`** — a chave é um token público de serviço de tiles, necessário para qualquer pessoa visualizar os mapas base do projeto.
 
 ---
 
