@@ -384,5 +384,6 @@ python scripts/segment.py data/raw/AB_NYC_2019.csv
 ---
 
 <p align="center">
-  Desenvolvido por <a href="https://github.com/caua-barreto"><b>Cauã Barreto</b></a> • Data Science & Machine Learning
+  Desenvolvido por <a href="https://github.com/caua-barreto"><b>Cauã Barreto</b></a> 
+  • Junior Data Scientist
 </p>
