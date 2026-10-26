@@ -274,12 +274,6 @@ Abaixo, visualizamos tanto a distribuição detalhada dos **9 clusters de densid
   * **Comportamento:** Pulverizado pelos 5 distritos (`43,8%` Manhattan, `20,1%` Queens, `17,6%` Brooklyn, `12,0%` Bronx e `6,5%` Staten Island), com ticket mediano elevado (`US$ 350`) e alta disponibilidade (`176 dias/ano`).
   * **Vocação:** Isola imóveis com combinações anômalas (mansões de luxo, locações corporativas de longo prazo ou anúncios recém-criados fora do padrão regional), protegendo a pureza estatística dos 5 perfis comerciais.
 
----
-
-Aqui está a markdown corrigida — removi o `.env.example` e ajustei a descrição do `config.py`:
-
----
-
 ## 🗂️ 7. Estrutura do Repositório e Reprodutibilidade (`configs.yaml`)
 
 Todo o projeto foi refatorado para eliminar constantes *hardcoded*: diretórios, listas de colunas, limites de *clipping*, coordenadas geográficas, grades de hiperparâmetros e mapeamento de perfis residem no arquivo [`configs.yaml`](configs.yaml), carregado de forma centralizada por [`src/config.py`](src/config.py).
